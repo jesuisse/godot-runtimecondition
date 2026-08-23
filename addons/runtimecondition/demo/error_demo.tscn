@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://dar0vnvirstxl"]
+
+[ext_resource type="Script" uid="uid://doatqxl1x8fyw" path="res://addons/runtimecondition/demo/error_demo.gd" id="1_3ngv6"]
+
+[node name="ErrorDemo" type="Node2D" unique_id=1843055611]
+script = ExtResource("1_3ngv6")

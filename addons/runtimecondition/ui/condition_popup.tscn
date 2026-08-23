@@ -1,0 +1,79 @@
+[gd_scene format=3 uid="uid://1wv00f4pl1g6"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_md0eu"]
+content_margin_top = 10.0
+content_margin_bottom = 10.0
+bg_color = Color(0.12109375, 0.12109375, 0.12109375, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1ly14"]
+bg_color = Color(0.16883273, 0.53125, 0.35305715, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.087713055, 0.3046875, 0.18696733, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_14ktn"]
+bg_color = Color(0.5294118, 0.11572612, 0.12362583, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.265625, 0.060600385, 0.028788934, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[node name="ConditionPopup" type="PopupPanel" unique_id=510604753]
+oversampling_override = 1.0
+initial_position = 2
+size = Vector2i(600, 300)
+visible = true
+
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=435488931]
+offset_left = 4.0
+offset_top = 4.0
+offset_right = 596.0
+offset_bottom = 296.0
+
+[node name="ConditionTitle" type="Label" parent="VBoxContainer" unique_id=506234648]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "Error Title"
+horizontal_alignment = 1
+
+[node name="ConditionContent" type="PanelContainer" parent="VBoxContainer" unique_id=240117259]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_md0eu")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/ConditionContent" unique_id=913903687]
+layout_mode = 2
+
+[node name="ConditionInfo" type="Label" parent="VBoxContainer/ConditionContent/VBoxContainer" unique_id=1139270152]
+layout_mode = 2
+size_flags_vertical = 6
+text = "Hi, I'm a template. I usually display condition information here."
+horizontal_alignment = 1
+
+[node name="Buttons" type="HBoxContainer" parent="VBoxContainer/ConditionContent/VBoxContainer" unique_id=1400387137]
+layout_mode = 2
+alignment = 1
+
+[node name="OKButton" type="Button" parent="VBoxContainer/ConditionContent/VBoxContainer/Buttons" unique_id=662486279]
+custom_minimum_size = Vector2(150, 35)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_1ly14")
+text = "OK"
+
+[node name="AbortButton" type="Button" parent="VBoxContainer/ConditionContent/VBoxContainer/Buttons" unique_id=1056309383]
+custom_minimum_size = Vector2(150, 35)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_14ktn")
+text = "Abort
+"

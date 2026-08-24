@@ -4,15 +4,21 @@ static var version: String = "v1.0.0"
 
 static var description: String = "RuntimeCondition" + " " + version
 
+## the root frame. It never goes out of scope because we keep this reference.
+## Hence we can add default handlers for various Conditions to it.
+var _root_frame: HandlerFrame
+
 ## this refers to the top frame in the chain of HandlerFrames. All frames in
 ## this chain are "active" and contain the "active" condition handlers
 var _top_frame: WeakRef
 
-# Free slots
-var _free_handlers: Array[int] = []
-
-# This contains the currently active handlers. 
-var _active_handlers: Array[ConditionHandler] = []
+func _init():
+	# we should populate this with a catch-all handler that will deal with
+	# unhandled errors by entering the debugger (in dev mode) or doing 
+	# logging via push_error...
+	_root_frame = HandlerFrame.new(self)
+	_root_frame.add_handler(ConditionHandler.new(&'RuntimeCondition', _enter_debugger_handler))
+	_set_top_frame(_root_frame)
 
 ## Raises a RuntimeCondition. 
 ## This starts condition handling from the point in the call stack where you
@@ -25,10 +31,10 @@ func raise(condition: RuntimeCondition):
 	return _handle_condition(condition)
 
 
-func _replace_top_with(frame: HandlerFrame):
+func _set_top_frame(frame: HandlerFrame):
 	# It must be a weakref because otherwise the frame would not be destroyed
 	# when its local variable goes out of scope
-	_top_frame = WeakRef(frame)
+	_top_frame = weakref(frame)
 	
 
 func _recover_defined_state(args: Array, pos: int, size: int) -> int:
@@ -46,19 +52,18 @@ func _parse_bind_list(args: Array, frame: HandlerFrame):
 	while i < l:		
 		if args[i] is StringName:
 			if args[i+1] is Callable:
-				var hid: int = handler(args[i], args[i+1])
-				frame.add_handler(hid, _get_handler_by_id(hid))
+				handler(args[i], args[i+1])
 				i += 2
 			else:
 				push_error("bind: Condition must be followed by Callable handler at argument %d" + str(i+1))
-				i = _recover_defined_state(args, i+1, l)			
+				i = _recover_defined_state(args, i+1, l)
 		elif args[i] is HandlerFrame:
 			if i == l-1:
 				frame.include(args[i])
 				i += 1
 			else:
 				push_error("bind: HandlerFrame must be the last argument if provided!")
-				i = _recover_defined_state(args, i, l)			
+				i = _recover_defined_state(args, i, l)
 		else:
 			push_error("bind: Syntax error; RuntimeCondition or HandlerFrame expected!")
 			break
@@ -67,38 +72,23 @@ func _parse_bind_list(args: Array, frame: HandlerFrame):
 ## active handlers.
 func bind(...args) -> HandlerFrame:
 	var frame : HandlerFrame = HandlerFrame.new(self)
+	var parent : HandlerFrame = _top_frame.get_ref()
+	if not parent:
+		push_error("top frame no longer exists")
+	frame._parent = parent
+	_set_top_frame(frame)
 	_parse_bind_list(args, frame)
 	return frame
 
-func _set_handler(handler: ConditionHandler) -> int:
-	# currently this code won't work because we'll add handlers out of order and this means
-	# the handlers won't be found in the right order. We have to fix this...!
-	var hid = -1
-	if _free_handlers.size() > 0:
-		hid = _free_handlers.pop_back()
-		_active_handlers[hid] = handler
-	else:
-		hid = _active_handlers.size()
-		_active_handlers.append(handler)
-	return hid
-	
-
-func _get_handler_by_id(id: int) -> ConditionHandler:
-	return _active_handlers[id]
-
-func _remove_handler(hid):
-	_active_handlers[hid] = null
-	_free_handlers.append(hid)
-
-
 
 # Builds a new ConditionHandler object and register it as an active handler
-func handler(condition, handler: Callable) -> int:
+func handler(condition, handler: Callable):
 	var obj = ConditionHandler.new(condition, handler)
-	var hid = _set_handler(obj)
-	return hid
-		
-
+	var frame = _top_frame.get_ref()
+	if frame:
+		frame.add_handler(obj)
+	else:
+		push_error("frame no longer exists")
 
 
 ## Check the return value of the raise call and return from the function you're
@@ -143,20 +133,34 @@ func _find_handler_for(condition: RuntimeCondition):
 func _cannot_handle(condition: RuntimeCondition):
 	return condition
 
+func _enter_debugger_handler(condition: RuntimeCondition):
+	# this will enter the interactive debugger if we're running in 
+	# the editor:
+	if Engine.is_editor_hint():
+		breakpoint
+
+
 
 func _ready():
 	print(description, " loaded.")
+	
+	var err = ErrorCondition.new("blah blah")
+	if err.is_subclass_of(&"RuntimeCondition"):
+		print("subclass")
+	else:
+		print("no subclass")
+	
+	
 
 ## A HandlerFrame contains a number of condition handlers; it is bound to a
 ## local variable in a function and will go out of scope when the function ends
-## or another HandlerFrame is assigned to the variable. It's main purpose is to 
-## deregister its handlers when this happens.
+## or another HandlerFrame is assigned to the variable. 
 class HandlerFrame extends Resource:
 	
 	var _manager = null
 	var _parent: HandlerFrame
 	
-	var _handlers : Dictionary[int,ConditionHandler]
+	var _handlers : Array[ConditionHandler]
 
 	## the return value of the last guard call
 	var _guarded_retval
@@ -174,14 +178,14 @@ class HandlerFrame extends Resource:
 	func _init(manager):
 		_manager = manager
 
-	func add_handler(hid: int, handler: ConditionHandler):
-		_handlers[hid] = handler
+	func add_handler(handler: ConditionHandler):
+		_handlers.append(handler)
 
 	## This includes the handlers in the [param other] frame
 	## in this frame.
 	func include(other: HandlerFrame):
-		for key in other._handlers:
-			add_handler(key, other._handler[key])
+		for h in other._handlers:
+			add_handler(h)
 
 	func guard(retval):
 		if retval is RuntimeCondition:
@@ -201,11 +205,11 @@ class HandlerFrame extends Resource:
 			# we're going out of scope
 			print("Frame is going out of scope")
 			# Deregister our handlers
-			for key in _handlers:
-				_manager._remove_handler(key)
+			#for key in _handlers:
+			#	_manager._remove_handler(key)
 			# this pops us from the top of the active
 			# frames
-			_manager._replace_top_frame_with(_parent)
+			_manager._set_top_frame(_parent)
 				
 			
 

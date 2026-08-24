@@ -4,6 +4,10 @@ static var version: String = "v1.0.0"
 
 static var description: String = "RuntimeCondition" + " " + version
 
+## this refers to the top frame in the chain of HandlerFrames. All frames in
+## this chain are "active" and contain the "active" condition handlers
+var _top_frame: WeakRef
+
 # Free slots
 var _free_handlers: Array[int] = []
 
@@ -20,6 +24,12 @@ func raise(condition: RuntimeCondition):
 	print(bt)
 	return _handle_condition(condition)
 
+
+func _replace_top_with(frame: HandlerFrame):
+	# It must be a weakref because otherwise the frame would not be destroyed
+	# when its local variable goes out of scope
+	_top_frame = WeakRef(frame)
+	
 
 func _recover_defined_state(args: Array, pos: int, size: int) -> int:
 	while pos < size:
@@ -144,6 +154,7 @@ func _ready():
 class HandlerFrame extends Resource:
 	
 	var _manager = null
+	var _parent: HandlerFrame
 	
 	var _handlers : Dictionary[int,ConditionHandler]
 
@@ -192,6 +203,10 @@ class HandlerFrame extends Resource:
 			# Deregister our handlers
 			for key in _handlers:
 				_manager._remove_handler(key)
+			# this pops us from the top of the active
+			# frames
+			_manager._replace_top_frame_with(_parent)
+				
 			
 
 	

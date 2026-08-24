@@ -50,7 +50,7 @@ func first_function():
 		
 	var result = H.guard(second_function(22, 33)); if H.unhandled: return H.unhandled
 	
-	var result = second_function(22, 23)); if cond.unhandled(result): return result
+	result = second_function(22, 23); if cond.unhandled(result): return result
 	
 	# Also possible, in order to allow for typed results:
 	#H.guard(second_function(22, 33))

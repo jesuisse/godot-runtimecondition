@@ -1,37 +1,35 @@
 RuntimeCondition
 ================
 
-RuntimeCondition is a GDSCript library which aims to provide you with a flavour
+RuntimeCondition is a GDScript library which aims to provide you with a flavour
 of exception handling inspired by Common Lisp's condition system.
 
 Since GDScript does not support exception handling and doesn't provide means
 to unwind or otherwise control the stack, exception handling cannot be made
-to work without the users (programmers) cooperation. This is what this addon 
-tries to simplify.
+to work without some form of user/programmer cooperation. 
 
 # Differences to traditional exception handling
 
 Traditional exceptions can be thrown/raised and will unwind the call stack up
-to the place where a matching catch statement is present. They will also jump
-over any code between the call which led to the raised exception and the 
-exception handler.
+to the place where a matching catch block will handle the exception. 
 
-RuntimeCondition cannot unwind the stack by itself, thus it requires the user
-to cooperate. 
-
-RuntimeCondition also doesn't run the exception handler *after* unwinding the
-stack but *before*, meaning that the condition is handled at exactly the point
-where it was raised. 
+RuntimeCondition cannot provide the syntactic sugar of try/catch blocks. 
+Instead of placing the exception handling code in a catch block, you place
+it in a condition handler funciton, which controls the value that a call to 
+`catch(...)` will produce.
 
 Exception handlers are functions of one argument (a condition) which can do
 arbitrary work. If they return a condition (possibly the same that was passed
 in to handle), the condition is considered 'unhandled' and the next matching
-handler will be called for another attempt to handle the condition. If you
-return another value (or null), this value will be returned by catch(..).
+handler will be called for another attempt to handle the condition.
 
-For this to work, you must bind condition handlers to the conditions which you
-want to handle. You do this by creating a HandlerFrame object as a local 
-variable in each function you want to participate in the condition handling.
+RuntimeCondition cannot unwind the stack by itself, thus it requires the user
+to cooperate and `return` out of functions at the appropriate places.
+
+RuntimeCondition also doesn't run the exception handler *after* unwinding the
+stack but *before*, meaning that the condition is handled at exactly the point
+where it was raised. This is an advantage if you want to write tools like
+interactive debuggers.
 
 # Implementation overview
 

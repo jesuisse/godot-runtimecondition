@@ -191,14 +191,18 @@ class HandlerFrame extends Resource:
 		return _handle_condition(condition)
 
 	## You should wrap functions which can raise conditions in catch. 
-	## [param value]] then represents their return value.
-	## catch either returns value, if no condition was raised or no
-	## handler was run to deal with the condition, or the return value of the
-	## condition handler that was run to handle a raised condition. 
-	func catch(value):
+	## catch either returns the last of it's arguments (if no condition was 
+	## raised or no handler was run to deal with the condition), or the return 
+	## value of the condition handler that was run to handle a raised condition. 
+	func catch(...args):
 		if not _active_condition or _must_unwind(_active_condition):
-			# nothing to catch or wrong frame
-			return value
+			# nothing to catch or wrong frame, so we simply return the 
+			# last argument if there is one:
+			var l = args.size()
+			if l > 0:
+				return args[args.size()-1]
+			else:
+				return null
 		
 		var retval = _active_condition._handled_retval
 		_active_condition = null

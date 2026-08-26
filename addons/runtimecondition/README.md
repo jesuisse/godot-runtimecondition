@@ -44,4 +44,4 @@ in reverse order for a matching handler, the handler will be called and the
 stack will then be unwound until we reach the HandlerFrame where the handler
 was bound.
 
-![illustration][doc/call_frames.svg]
+![illustration](doc/call_frames.svg)

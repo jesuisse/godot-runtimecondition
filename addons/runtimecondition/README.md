@@ -60,7 +60,11 @@ through it's own handlers, it's parent's handlers and so on until it finds a
 handler that matches the Condition that was raised. It then runs the handler
 and returns. 
 
-Here's where the user's cooperation is needed. Each function which has a
+The stack should now unwind up to the HandlerFrame where the handler that was
+just run was bound. Unfortunately, there is no support to do this automatically
+in GDScript.
+
+So here's where the user's cooperation is needed. Each function which has a
 HandlerFrame must check it's HandlerFrames' `unwind` property and immediately
 return if true. In practice, this looks like this:
 	
@@ -83,6 +87,11 @@ return if true. In practice, this looks like this:
 		if something_bad_has_happened:
 			var result = E.raise(Error.new("Oh no! Something bad has happened!"))			
 			if E.unwind: return
+
+If you follow this protocol, the condition framework can make sure that the
+unwinding continues until you reach the correct function with with correct
+HandlerFrame, at which point the handler's return value can be caught with
+`catch`.
 	
 ## How to bind and write condition handlers
 

@@ -46,6 +46,14 @@ was bound.
 
 ![illustration](doc/call_frames.svg)
 
+HandlerFrame objects can be created with the `bind` method:
+	
+	func some_function(...):
+	    # Creates the HandlerFrame for this function. Since it is a local 
+		# variable, the frame will automatically be destroyed when the 
+		# function exits.
+        var E = Condition.bind(...)
+
 Assuming a condition is raised in `second_function`, the HandlerFrame at the top
 of the stack (which coincides with the call frame of `second_function`) will look 
 through it's own handlers, it's parent's handlers and so on until it finds a 

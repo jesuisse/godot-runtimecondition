@@ -37,7 +37,7 @@ variable in each function you want to participate in the condition handling.
 
 Each function where you expect to throw or catch a condition, and each function
 where such a condition might pass through on its travel along the call stack,
-needs and exactly one HandlerFrame object. Each HandlerFrame object stores a 
+needs exactly one HandlerFrame object. Each HandlerFrame object stores a 
 list of bound handlers and a reference to the parent HandlerFrame. When a 
 condition is raised, the HandlerFrames will be search from top to bottom and
 in reverse order for a matching handler, the handler will be called and the 
@@ -45,3 +45,82 @@ stack will then be unwound until we reach the HandlerFrame where the handler
 was bound.
 
 ![illustration](doc/call_frames.svg)
+
+Assuming a condition is raised in `second_function`, the HandlerFrame at the top
+of the stack (which coincides with the call frame of `second_function`) will look 
+through it's own handlers, it's parent's handlers and so on until it finds a 
+handler that matches the Condition that was raised. It then runs the handler
+and returns. 
+
+Here's where the user's cooperation is needed. Each function which has a
+HandlerFrame must check it's HandlerFrames' `unwind` property and immediately
+return if true. In practice, this looks like this:
+	
+	func first_function(...):
+		# Create the HandlerFrame for this function
+		E = Condition.bind()
+		
+		...
+		
+		var result = E.catch(second_function(...))
+		# This ensures we can unwind the stack if necessary
+		if E.unwind: return
+
+	func second_function(...):
+		E = Condition.bind()
+		...
+		if something_bad_has_happened:
+			var result = E.raise(Error.new("Oh no! Something bad has happened!"))			
+			if E.unwind: return
+	
+## How to bind and write condition handlers
+
+In order to handle a condition, we need to bind a handler for the condition
+class in question. This is done as follows:
+
+	func error_handler(condition: RuntimeCondition):
+		print("Oh no! Something happened!")
+		print("But I can handle it.")
+		return 23	
+	
+	func first_function(...):
+		# Binds an Error handler
+		E = Condition.bind(Condition.Error, error_handler)
+		
+		...
+		
+		var result = E.catch(second_function(...))
+		# This ensures we can unwind the stack if necessary
+		if E.unwind: return
+	
+If `second_function` raises an Error, it will find `error_handler` in the
+HandlerFrame of `first_function`, run the handler, get a return value of 23
+and pass this on as the return value of `catch(...)` when `second_function` 
+returns.
+
+Why should `second_function` return? Because the programmer has cooperated with
+the framework and added the
+
+	if E.unwind: return
+	
+line immediately after raising the condition:
+	
+	func second_function(...):
+		E = Condition.bind()
+		...
+		if something_bad_has_happened:
+			var result = E.raise(Error.new("Oh no! Something bad has happened!"))			
+			if E.unwind: return
+			
+This line must be added manually after all calls to raise or catch in order for
+the framework to work as intended.
+
+
+		
+		
+		
+		
+		
+		
+		
+	

@@ -65,6 +65,9 @@ return if true. In practice, this looks like this:
 		var result = E.catch(second_function(...))
 		# This ensures we can unwind the stack if necessary
 		if E.unwind: return
+		
+		# More code that should only run for valid results
+		...
 
 	func second_function(...):
 		E = Condition.bind()
@@ -78,10 +81,11 @@ return if true. In practice, this looks like this:
 In order to handle a condition, we need to bind a handler for the condition
 class in question. This is done as follows:
 
+	# This is a condition handler which handles the condition it's given
 	func error_handler(condition: RuntimeCondition):
 		print("Oh no! Something happened!")
 		print("But I can handle it.")
-		return 23	
+		return 23 
 	
 	func first_function(...):
 		# Binds an Error handler
@@ -92,32 +96,56 @@ class in question. This is done as follows:
 		var result = E.catch(second_function(...))
 		# This ensures we can unwind the stack if necessary
 		if E.unwind: return
+
+		# Rest of the function
 	
 If `second_function` raises an Error, it will find `error_handler` in the
 HandlerFrame of `first_function`, run the handler, get a return value of 23
 and pass this on as the return value of `catch(...)` when `second_function` 
-returns.
+returns. In the above case, `catch` would return 23, which would then be
+asigned to `result` and the rest of the function would continue to execute
+normally, since the condition was handled. 
 
-Why should `second_function` return? Because the programmer has cooperated with
-the framework and added the
+`E.unwind` checks whether the function should continue normally or return
+immediately, and you, the programmer, will have to honor this by adding a 
+check after every `catch`, every `raise` and every function call which might
+have raised a condition, even if you don't intend to catch it.
 
-	if E.unwind: return
+## Order of bound handlers
+
+The order of the handlers you bind with the `bind` method matters. Assume 
+you have the following two bindings:
 	
-line immediately after raising the condition:
+	E = Condition.bind(Condition.Error, error_handler,
+					   RuntimeCondition, catch_all_handler)
+
+This will not work as intended because `Contition.Error` is derived from 
+`RuntimeCondition` and the order in which matching handlers are searched for
+is reversed. So if a `Condition.Error` condition was raised, `catch_all_handler`
+would be selected as the first handler matching the condition. 
+
+If you switch the order of the bindings, they work as intended:
 	
-	func second_function(...):
-		E = Condition.bind()
-		...
-		if something_bad_has_happened:
-			var result = E.raise(Error.new("Oh no! Something bad has happened!"))			
-			if E.unwind: return
-			
-This line must be added manually after all calls to raise or catch in order for
-the framework to work as intended.
+	
+	E = Condition.bind(RuntimeCondition, catch_all_handler,
+					   Condition.Error, error_handler)
 
+Now all `Condition.Error` conditions will be handled by `error_handler`, and
+every other condition will be handled by `catch_all_handler`.
 
-		
-		
+Note that binding such a catch-all makes sense near the top level, but other,
+more specific handlers further along the call stack will not get a chance to
+run (unless the catch-all declines to handle the condition, which you can 
+achieve by returning the condition you received:
+	
+	# A handler that doesn't handle it's condition. This gives other matching
+	# handlers a chance to run.
+	func stupid_handler(condition: RuntimeCondition):
+		print ("Oh no! I can't handle this!")
+		return condition
+
+					   
+	
 		
 		
 		
